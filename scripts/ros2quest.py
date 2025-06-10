@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import rospy
 import sys
+import csv
+import os
 
 from quest2ros.msg import OVR2ROSInputs, OVR2ROSHapticFeedback
 from geometry_msgs.msg import PoseStamped, Twist 
@@ -35,15 +37,69 @@ class ros2quest:
     self.left_hand_twist = Twist()
     self.left_hand_inputs = OVR2ROSInputs()
 
+    # CSV file paths
+    self.csv_files = {
+        'q2r_left_hand_pose': os.path.join(os.path.expanduser('~'), 'q2r_left_hand_pose.csv'),
+        'q2r_right_hand_pose': os.path.join(os.path.expanduser('~'), 'q2r_right_hand_pose.csv'),
+        'q2r_left_hand_inputs': os.path.join(os.path.expanduser('~'), 'q2r_left_hand_inputs.csv'),
+        'q2r_right_hand_inputs': os.path.join(os.path.expanduser('~'), 'q2r_right_hand_inputs.csv')
+    }
+
+    # Initialize CSV files with headers if they don't exist
+    self.init_csv_files()
+
+  def init_csv_files(self):
+    # Initialize pose CSV files
+    for pose_file in ['q2r_left_hand_pose', 'q2r_right_hand_pose']:
+        if not os.path.exists(self.csv_files[pose_file]):
+            with open(self.csv_files[pose_file], 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['x', 'y', 'z', 'qx', 'qy', 'qz', 'qw'])
+    
+    # Initialize inputs CSV files
+    for inputs_file in ['q2r_left_hand_inputs', 'q2r_right_hand_inputs']:
+        if not os.path.exists(self.csv_files[inputs_file]):
+            with open(self.csv_files[inputs_file], 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(['button_upper', 'button_lower', 'thumb_stick_horizontal', 'thumb_stick_vertical', 'press_index', 'press_middle'])
+
+  def write_pose_to_csv(self, filename, pose_data):
+    with open(filename, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['x', 'y', 'z', 'qx', 'qy', 'qz', 'qw'])
+        writer.writerow([
+            pose_data.pose.position.x,
+            pose_data.pose.position.y,
+            pose_data.pose.position.z,
+            pose_data.pose.orientation.x,
+            pose_data.pose.orientation.y,
+            pose_data.pose.orientation.z,
+            pose_data.pose.orientation.w
+        ])
+
+  def write_inputs_to_csv(self, filename, inputs_data):
+    with open(filename, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['button_upper', 'button_lower', 'thumb_stick_horizontal', 'thumb_stick_vertical', 'press_index', 'press_middle'])
+        writer.writerow([
+            inputs_data.button_upper,
+            inputs_data.button_lower,
+            inputs_data.thumb_stick_horizontal,
+            inputs_data.thumb_stick_vertical,
+            inputs_data.press_index,
+            inputs_data.press_middle
+        ])
 
   def ovr2ros_right_hand_pose_callback(self, data):    
     self.right_hand_pose = data
+    self.write_pose_to_csv(self.csv_files['q2r_right_hand_pose'], data)
 
   def ovr2ros_right_hand_twist_callback(self, data):    
     self.right_hand_twist = data
 
   def ovr2ros_right_hand_inputs_callback(self, data):    
     self.right_hand_inputs = data
+    self.write_inputs_to_csv(self.csv_files['q2r_right_hand_inputs'], data)
 
     #if the lower button is pressed send the twist back to the quest to move the q2r ; 0 otherwise
     q2r_twist=Twist()
@@ -63,12 +119,14 @@ class ros2quest:
 
   def ovr2ros_left_hand_pose_callback(self, data):    
     self.left_hand_pose = data
+    self.write_pose_to_csv(self.csv_files['q2r_left_hand_pose'], data)
 
   def ovr2ros_left_hand_twist_callback(self, data):    
     self.left_hand_twist = data
 
   def ovr2ros_left_hand_inputs_callback(self, data):    
     self.left_hand_inputs = data
+    self.write_inputs_to_csv(self.csv_files['q2r_left_hand_inputs'], data)
 
 
     #if the lower button is pressed send the twist back to the quest to move the dice ; 0 otherwise
